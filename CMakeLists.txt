@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(project1)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -115,9 +115,7 @@ catkin_package()
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/project1.cpp
-# )
+add_library(robot src/robot.cpp)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -131,7 +129,7 @@ add_executable(talkerGoals src/talkerGoals.cpp)
 target_link_libraries(talkerGoals ${catkin_LIBRARIES})
 
 add_executable(moveRobot src/moveRobot.cpp)
-target_link_libraries(moveRobot ${catkin_LIBRARIES})
+target_link_libraries(moveRobot robot ${catkin_LIBRARIES})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

@@ -15,12 +15,12 @@ int main(int argc, char **argv)
 	nh.param<double>("x_goal", x_goal, 5);
 	nh.param<double>("y_goal", y_goal, 6);
 
-	ROS_INFO("x=%lf, y=%lf", x_goal, y_goal);
+	//ROS_INFO("x=%lf, y=%lf", x_goal, y_goal);
 
 	double frequency = 1 / t_goal;
 
 	ros::Rate loop_rate(frequency);
-	ros::Publisher number_publisher = node_obj.advertise<geometry_msgs::Point>("myGoals",10);
+	ros::Publisher number_publisher = node_obj.advertise<geometry_msgs::Point>("/myGoals",10);
 
 	while (ros::ok())
 	{
