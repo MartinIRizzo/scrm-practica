@@ -66,6 +66,9 @@ int main(int argc, char **argv) {
 
 	int idRobot, chosenAlgorithm;
 	double critDist, dObj, vMaxDes, vMaxRot, kRotMin, kRotMax, oriError, tAvoidObs;
+
+	double w1, w2;
+	int timeToWait;
   
 	nh_private.param<int>("id_robot", idRobot, 0);
 	nh_private.param<int>("algor", chosenAlgorithm, 1);
@@ -77,6 +80,9 @@ int main(int argc, char **argv) {
 	nh_private.param<double>("k_rot_max", kRotMax, 0.2);
 	nh_private.param<double>("ori_error", oriError, 0.3);
 	nh_private.param<double>("t_avoid_obs", tAvoidObs, 1);
+	nh_private.param<double>("w_1", w1, 1);
+	nh_private.param<double>("w_2", w2, 2.5);
+	nh_private.param<int>("t_wait", timeToWait, 100);
 
 	MUSIRobot::Params params;
 	params.criticalDistance = critDist;
@@ -87,6 +93,10 @@ int main(int argc, char **argv) {
 	params.vMaximumRotation = vMaxRot;
 	params.vMaximumDisplacement = vMaxDes;
 	params.timeToAvoidObstacle = tAvoidObs;
+
+	params.w1 = w1;
+	params.w2 = w2;
+	params.timeToWait = timeToWait;
 
 	MUSIRobot::Algorithm selectedAlgorithm = MUSIRobot::Algorithm::SimpleAvoidance;
 	if (chosenAlgorithm == 2) {

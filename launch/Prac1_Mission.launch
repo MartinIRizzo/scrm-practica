@@ -12,6 +12,9 @@
       <param name="k_rot_max" value="0.2" />
       <param name="ori_error" value="0.3" />
       <param name="t_avoid_obs" value="1.0" />
+      <param name="w_1" value="1.0" />
+      <param name="w_2" value="2.5" />
+      <param name="t_wait" value="100" />
    </node>
 
    <node name="talkerGoals" pkg="project1" type="talkerGoals" output="screen">

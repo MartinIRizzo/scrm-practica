@@ -27,6 +27,10 @@ struct Params {
     double kMinimumRotation, kMaximumRotation, vMaximumRotation;
     double vMaximumDisplacement;
     double timeToAvoidObstacle;
+
+    double w1;
+    double w2;
+    int timeToWait;
 };
 
 class Robot {
@@ -48,6 +52,9 @@ private:
     bool isObjectAhead(const sensor_msgs::LaserScan& laserData);
     double computeAngleDifference();
     double computeRotation(double angleDifference);
+    geometry_msgs::Vector3 generateObjectiveVector();
+    std::vector<geometry_msgs::Vector3> generateObstacleVectors(const sensor_msgs::LaserScan& laserData);
+    geometry_msgs::Vector3 generateObstacleVector(size_t i, double angleIncrement, double reading);
     geometry_msgs::Twist runSimpleAvoidance(const sensor_msgs::LaserScan& laserData);
     geometry_msgs::Twist runPotentialFields(const sensor_msgs::LaserScan& laserData);
 public:

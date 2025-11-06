@@ -125,6 +125,55 @@ geometry_msgs::Twist Robot::runSimpleAvoidance(const sensor_msgs::LaserScan& las
 }
 
 geometry_msgs::Twist Robot::runPotentialFields(const sensor_msgs::LaserScan& laserData) {
+	geometry_msgs::Vector3 vObj = generateObjectiveVector();
+	std::vector<geometry_msgs::Vector3> vObs = generateObstacleVectors(laserData);
+}
+
+geometry_msgs::Vector3 Robot::generateObjectiveVector() {
+	double x = targetX - currentOdom.currentX;
+	double y = targetY - currentOdom.currentY;
+
+	double magnitude = std::sqrt(std::pow(x, 2) + std::pow(y, 2));
+
+	x /= magnitude;
+	y /= magnitude;
+
+	geometry_msgs::Vector3 vector;
+	vector.x = x;
+	vector.y = y;
+
+	return vector;
+}
+
+std::vector<geometry_msgs::Vector3> Robot::generateObstacleVectors(const sensor_msgs::LaserScan& laserData) {
+	std::vector<geometry_msgs::Vector3> vectors;
+	double angleIncrement = laserData.angle_increment;
+
+	for (size_t i = 0; i < laserData.ranges.size(); i++) {
+		double reading = laserData.ranges[i];
+
+		geometry_msgs::Vector3 vector = generateObstacleVector(i, angleIncrement, reading);
+
+	}
+}
+
+geometry_msgs::Vector3 Robot::generateObstacleVector(size_t i, double angleIncrement, double reading) {
+	double theta = -M_PI + (i * angleIncrement);
+
+	double x = reading * std::sin(theta);
+	double y = reading * std::cos(theta);
+
+	double magnitude = std::sqrt(std::pow(x, 2) + std::pow(y, 2));
+
+	double newMagnitude = 0;
+	if (reading <= params.criticalDistance) { 
+		magnitude = (params.criticalDistance - reading) / params.criticalDistance;
+	}
+
+	x = (x / magnitude) * newMagnitude;
+	y = (y / magnitude) * newMagnitude;
+
+	// TODO: transform vector from robot relative to world's relative
 
 }
 
