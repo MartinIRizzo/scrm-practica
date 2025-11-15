@@ -8,7 +8,6 @@
 #include "sensor_msgs/Range.h"
 #include <sensor_msgs/PointCloud.h>
 #include <tf/transform_datatypes.h>
-#include <boost/bind.hpp>
 
 #include "nav_msgs/Odometry.h"
 #include "project1/robot.hpp"
@@ -22,8 +21,7 @@
 using namespace std;
 using std::ostringstream;
 
-ros::Publisher cmd_vel_pub; // publisher for movement commands
-ros::Time start;
+ros::Publisher cmd_vel_pub; 
 
 MUSIRobot::Robot robot;
 
@@ -34,7 +32,6 @@ void callbackLaser(const sensor_msgs::LaserScan& most_intense) {
 	cmd_vel_pub.publish(result);
 	ros::spinOnce();
 }
-
 
 /***
 Print the odometry location.
@@ -103,25 +100,25 @@ int main(int argc, char **argv) {
 		selectedAlgorithm = MUSIRobot::Algorithm::PotentialFields;
 	}
 
-	robot.init(idRobot, selectedAlgorithm, params);
+	tf::TransformListener listener(ros::Duration(10.0));
+	robot.init(idRobot, selectedAlgorithm, params, &listener);
 
 	ros::Subscriber goals_sub = nh.subscribe("/myGoals", 10, callbackGoals);
 
-	string robot = "robot_" + std::to_string(idRobot);
+	string robotName = "robot_" + std::to_string(idRobot);
 
 	//Build a string with the odom topic
-    string odom_topic_name = robot + "/odom";
+    string odom_topic_name = robotName + "/odom";
 
 	// subscribe to robot's odom topic "robot_X/base_scan"
 	ros::Subscriber odom_sub = nh.subscribe(odom_topic_name, 10, callbackOdom);
 
      // subscribe to robot's laser scan topic "robot_X/base_scan"
-	string sonar_scan_topic_name = robot + "/base_scan_1";
+	string sonar_scan_topic_name = robotName + "/base_scan_1";
 	ros::Subscriber sub = nh.subscribe(sonar_scan_topic_name, 1, callbackLaser);
 
-    string cmd_vel_topic_name = robot + "/cmd_vel";
+    string cmd_vel_topic_name = robotName + "/cmd_vel";
 	cmd_vel_pub = nh.advertise<geometry_msgs::Twist>(cmd_vel_topic_name, 10);
     
-	start = ros::Time::now();
 	ros::spin();
 }

@@ -3,7 +3,7 @@
 
    <node name="moveRobot" pkg="project1" type="moveRobot" output="screen">
       <param name="id_robot" value="1" />
-      <param name="algor" value="1" />
+      <param name="algor" value="2" />
       <param name="crit_dist" value="0.8" />
       <param name="d_obj" value="0.2" />
       <param name="v_max_des" value="0.8" />

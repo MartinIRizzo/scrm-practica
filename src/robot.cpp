@@ -1,15 +1,18 @@
-#include "sensor_msgs/LaserScan.h"
-#include "geometry_msgs/Twist.h"
-#include "project1/robot.hpp"
+#include <string>
+#include "stdio.h"
+#include <sensor_msgs/LaserScan.h>
+#include <geometry_msgs/Twist.h>
+#include <project1/robot.hpp>
 
 namespace MUSIRobot {
 Robot::Robot() {}
 
-void Robot::init(int id, Algorithm algorithm, Params params) {
+void Robot::init(int id, Algorithm algorithm, Params params, tf::TransformListener *listener) {
     this->id = id;
     this->selectedAlgorithm = algorithm;
     this->currentState = Normal;
     this->params = params;
+	this->listener = listener;
 }
 
 geometry_msgs::Twist Robot::run(const sensor_msgs::LaserScan& laserData) {
@@ -125,11 +128,53 @@ geometry_msgs::Twist Robot::runSimpleAvoidance(const sensor_msgs::LaserScan& las
 }
 
 geometry_msgs::Twist Robot::runPotentialFields(const sensor_msgs::LaserScan& laserData) {
-	geometry_msgs::Vector3 vObj = generateObjectiveVector();
-	std::vector<geometry_msgs::Vector3> vObs = generateObstacleVectors(laserData);
+	if (currentState == AvoidingObstacle) {
+		double tWait = params.timeToWait / 1000.0;
+
+		double now = ros::Time::now().toSec();
+
+		if ((now - lastPotentialFieldsDecisionTimestamp) < tWait) {
+			return lastPotentialFieldsDecision;
+		}
+
+		currentState = Normal;
+	}
+
+	tf::Vector3 vObj = generateObjectiveVector();
+	tf::Vector3 vObs = generateObstacleVectors(laserData);
+
+
+	tf::Vector3 result = params.w1 * vObj + params.w2 * vObs;
+
+	double angleToTarget = std::atan2(result.y(), result.x());
+	angleToTarget = angleToTarget - currentOdom.currentOrientation;
+
+	angleToTarget = std::fmod(angleToTarget + M_PI, 2.0 * M_PI) - M_PI;
+
+	double magnitude = std::sqrt(
+		std::pow(result.x(), 2) +  std::pow(result.y(), 2)
+	);
+
+	geometry_msgs::Twist cmd_vel;
+
+	double rotationVelocity = computeRotation(angleToTarget);
+	cmd_vel.angular.z = rotationVelocity;
+
+
+	if (std::abs(angleToTarget) < params.permittedOrientationError) {
+		cmd_vel.linear.x = std::min(magnitude, params.vMaximumDisplacement);
+	} else {
+		cmd_vel.linear.x = 0;
+	}
+
+	lastPotentialFieldsDecision = cmd_vel;
+	currentState = AvoidingObstacle;
+	lastAvoidTimestamp = ros::Time::now().toSec();
+
+	return cmd_vel;
 }
 
-geometry_msgs::Vector3 Robot::generateObjectiveVector() {
+tf::Vector3 Robot::generateObjectiveVector() {
 	double x = targetX - currentOdom.currentX;
 	double y = targetY - currentOdom.currentY;
 
@@ -138,26 +183,31 @@ geometry_msgs::Vector3 Robot::generateObjectiveVector() {
 	x /= magnitude;
 	y /= magnitude;
 
-	geometry_msgs::Vector3 vector;
-	vector.x = x;
-	vector.y = y;
+	tf::Vector3 vector(x, y, 0);
 
 	return vector;
 }
 
-std::vector<geometry_msgs::Vector3> Robot::generateObstacleVectors(const sensor_msgs::LaserScan& laserData) {
-	std::vector<geometry_msgs::Vector3> vectors;
+tf::Vector3 Robot::generateObstacleVectors(const sensor_msgs::LaserScan& laserData) {
+	std::vector<tf::Vector3> vectors;
 	double angleIncrement = laserData.angle_increment;
 
 	for (size_t i = 0; i < laserData.ranges.size(); i++) {
 		double reading = laserData.ranges[i];
 
-		geometry_msgs::Vector3 vector = generateObstacleVector(i, angleIncrement, reading);
-
+		tf::Vector3 vector = generateObstacleVector(i, angleIncrement, reading);
+		vectors.push_back(vector);
 	}
+
+	tf::Vector3 result;
+	for (const auto& vec : vectors) {
+		result += vec;
+	}
+
+	return result;
 }
 
-geometry_msgs::Vector3 Robot::generateObstacleVector(size_t i, double angleIncrement, double reading) {
+tf::Vector3 Robot::generateObstacleVector(size_t i, double angleIncrement, double reading) {
 	double theta = -M_PI + (i * angleIncrement);
 
 	double x = reading * std::sin(theta);
@@ -167,13 +217,50 @@ geometry_msgs::Vector3 Robot::generateObstacleVector(size_t i, double angleIncre
 
 	double newMagnitude = 0;
 	if (reading <= params.criticalDistance) { 
-		magnitude = (params.criticalDistance - reading) / params.criticalDistance;
+		newMagnitude = (params.criticalDistance - reading) / params.criticalDistance;
 	}
 
-	x = (x / magnitude) * newMagnitude;
-	y = (y / magnitude) * newMagnitude;
+	if (newMagnitude > 0) {
+		x = (x / magnitude) * newMagnitude;
+		y = (y / magnitude) * newMagnitude;
+	} else {
+		x = 0;
+		y = 0;
+	}
 
-	// TODO: transform vector from robot relative to world's relative
+
+	tf::Vector3 robotVector(x, y, 0);
+
+	// Return the vector transformed and inverted
+	return transformToOdomFrame(robotVector) * -1;
+}
+
+tf::Vector3 Robot::transformToOdomFrame(tf::Vector3 robotVector) {
+	try {
+
+		std::string robotString = "robot_" + std::to_string(id);
+		std::string source_frame = robotString + "/base_link";
+		std::string target_frame = robotString + "/odom";
+
+		geometry_msgs::Vector3Stamped base_vector;
+	
+		tf::StampedTransform transform;
+		listener->lookupTransform(
+			target_frame,
+			source_frame,
+			ros::Time(0),
+			transform
+		);
+
+		tf::Matrix3x3 R(transform.getRotation());
+		tf::Vector3 v_world = R * robotVector;
+
+		return v_world;
+	} catch (tf::TransformException &ex) {
+		ROS_WARN("%s", ex.what());
+
+		return tf::Vector3(0, 0, 0);
+	}
 
 }
 
