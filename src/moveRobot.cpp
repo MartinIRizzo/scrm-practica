@@ -106,6 +106,8 @@ int main(int argc, char **argv) {
 	params.w2 = w2;
 	params.timeToWait = timeToWait;
 
+	params.distLeader = distLeader;
+
 	MUSIRobot::Algorithm selectedAlgorithm = MUSIRobot::Algorithm::SimpleAvoidance;
 	if (chosenAlgorithm == 2) {
 		selectedAlgorithm = MUSIRobot::Algorithm::PotentialFields;
@@ -114,6 +116,7 @@ int main(int argc, char **argv) {
 	MUSIRobot::Role selectedRole = MUSIRobot::Role::Leader;
 	if (role != 0) {
 		selectedRole = MUSIRobot::Role::Follower;
+		ROS_INFO("Setting role Follower to robot id %d", idRobot);
 	}
 
 	tf::TransformListener listener(ros::Duration(10.0));
