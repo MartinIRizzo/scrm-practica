@@ -9,10 +9,16 @@ enum Algorithm {
     PotentialFields = 1
 };
 
+enum Role {
+    Leader = 0,
+    Follower = 1
+};
+
 enum RobotState {
     Normal = 0,
     RotatingToAvoidObstacle = 1,
-    AvoidingObstacle = 2
+    AvoidingObstacle = 2,
+    ExecutingPotentialFieldsDecision = 3
 };
 
 struct Odom {
@@ -32,6 +38,8 @@ struct Params {
     double w1;
     double w2;
     int timeToWait;
+
+    double distLeader;
 };
 
 class Robot {
@@ -39,6 +47,7 @@ private:
     int id;
     Params params;
     RobotState currentState;
+    Role role;
     Odom currentOdom;
     Algorithm selectedAlgorithm;
     double targetX, targetY;
@@ -52,11 +61,12 @@ private:
     // using 0.1 angles between measurements. Thus, we can specify a parameter
     // to specify how wide our "no obstacles path" is. This will be used
     // in computing the simple avoidance algorithm
-    static const int ANGLE_STEPS_OFFSET = 10;
+    static const int ANGLE_STEPS_OFFSET = 30;
 
     bool isObjectAhead(const sensor_msgs::LaserScan& laserData);
     double computeAngleDifference();
     double computeRotation(double angleDifference);
+    bool reachedObjective();
     tf::Vector3 generateObjectiveVector();
     tf::Vector3 generateObstacleVectors(const sensor_msgs::LaserScan& laserData);
     tf::Vector3 generateObstacleVector(size_t i, double angleIncrement, double reading);
@@ -65,7 +75,7 @@ private:
     geometry_msgs::Twist runPotentialFields(const sensor_msgs::LaserScan& laserData);
 public:
     Robot();
-    void init(int id, Algorithm algorithm, Params params, tf::TransformListener *listener);
+    void init(int id, Algorithm algorithm, Role role, Params params, tf::TransformListener *listener);
     void setOdom(Odom odom);
     void setTarget(double targetX, double targetY);
     geometry_msgs::Twist run(const sensor_msgs::LaserScan& laserData);

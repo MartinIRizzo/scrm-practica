@@ -7,12 +7,13 @@
 namespace MUSIRobot {
 Robot::Robot() {}
 
-void Robot::init(int id, Algorithm algorithm, Params params, tf::TransformListener *listener) {
+void Robot::init(int id, Algorithm algorithm, Role role, Params params, tf::TransformListener *listener) {
     this->id = id;
     this->selectedAlgorithm = algorithm;
     this->currentState = Normal;
     this->params = params;
 	this->listener = listener;
+	this->role = role;
 }
 
 geometry_msgs::Twist Robot::run(const sensor_msgs::LaserScan& laserData) {
@@ -61,6 +62,24 @@ double Robot::computeRotation(double angleDifference) {
 	return rotVel;
 }
 
+bool Robot::reachedObjective() {
+	double dx = targetX - currentOdom.currentX;
+	double dy = targetY - currentOdom.currentY;
+	double distance = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2));
+
+	if (role == Follower && distance <= params.distLeader) {
+		ROS_INFO("id: %d (Follower), I've reached objective", id);
+		return true;
+	}
+
+	if (role == Leader && distance <= params.distanceToObjective) {
+		ROS_INFO("id: %d (Leader), I've reached objective", id);
+		return true;
+	}
+
+	return false;
+}
+
 geometry_msgs::Twist Robot::runSimpleAvoidance(const sensor_msgs::LaserScan& laserData) {
     geometry_msgs::Twist cmd_vel;
     cmd_vel.linear.x = 0;
@@ -84,7 +103,7 @@ geometry_msgs::Twist Robot::runSimpleAvoidance(const sensor_msgs::LaserScan& las
 		double distance = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2));
 
 		// Reached objective
-		if (distance <= params.distanceToObjective) {
+		if (reachedObjective()) {
 			return cmd_vel;
 		}
 
@@ -128,7 +147,19 @@ geometry_msgs::Twist Robot::runSimpleAvoidance(const sensor_msgs::LaserScan& las
 }
 
 geometry_msgs::Twist Robot::runPotentialFields(const sensor_msgs::LaserScan& laserData) {
-	if (currentState == AvoidingObstacle) {
+	geometry_msgs::Twist cmd_vel;
+	cmd_vel.linear.x = 0;
+	cmd_vel.linear.y = 0;
+	cmd_vel.linear.z = 0;
+	cmd_vel.angular.x = 0;
+	cmd_vel.angular.y = 0;
+	cmd_vel.angular.z = 0;
+
+	if (reachedObjective()) {
+		return cmd_vel;
+	}
+
+	if (currentState == ExecutingPotentialFieldsDecision) {
 		double tWait = params.timeToWait / 1000.0;
 
 		double now = ros::Time::now().toSec();
@@ -155,7 +186,6 @@ geometry_msgs::Twist Robot::runPotentialFields(const sensor_msgs::LaserScan& las
 		std::pow(result.x(), 2) +  std::pow(result.y(), 2)
 	);
 
-	geometry_msgs::Twist cmd_vel;
 
 	double rotationVelocity = computeRotation(angleToTarget);
 	cmd_vel.angular.z = rotationVelocity;
@@ -168,7 +198,7 @@ geometry_msgs::Twist Robot::runPotentialFields(const sensor_msgs::LaserScan& las
 	}
 
 	lastPotentialFieldsDecision = cmd_vel;
-	currentState = AvoidingObstacle;
+	currentState = ExecutingPotentialFieldsDecision;
 	lastAvoidTimestamp = ros::Time::now().toSec();
 
 	return cmd_vel;
