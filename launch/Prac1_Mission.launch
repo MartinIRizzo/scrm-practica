@@ -2,14 +2,14 @@
    <node name="Stage" pkg="stage_ros" type="stageros" args="$(find project1)/worlds/mundo.world"/>
 
    <node name="talkerGoals" pkg="project1" type="talkerGoals" output="screen">
-      <param name="x_goal" value="5" />
-      <param name="y_goal" value="5" />
+      <param name="x_goal" value="9" />
+      <param name="y_goal" value="-4" />
       <param name="t_goal" value="2" />
    </node>
 
    <node name="moveRobotLead" pkg="project1" type="moveRobot" output="screen">
       <param name="id_robot" value="1" />
-      <param name="algor" value="1" />
+      <param name="algor" value="2" />
       <param name="crit_dist" value="0.8" />
       <param name="d_obj" value="0.2" />
       <param name="v_max_des" value="1" />

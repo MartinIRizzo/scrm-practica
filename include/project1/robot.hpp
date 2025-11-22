@@ -69,7 +69,7 @@ private:
     bool reachedObjective();
     tf::Vector3 generateObjectiveVector();
     tf::Vector3 generateObstacleVectors(const sensor_msgs::LaserScan& laserData);
-    tf::Vector3 generateObstacleVector(size_t i, double angleIncrement, double reading);
+    tf::Vector3 generateObstacleVector(size_t i, double angleIncrement, double angleMin, double reading);
     tf::Vector3 transformToOdomFrame(tf::Vector3 robotVector);
     geometry_msgs::Twist runSimpleAvoidance(const sensor_msgs::LaserScan& laserData);
     geometry_msgs::Twist runPotentialFields(const sensor_msgs::LaserScan& laserData);

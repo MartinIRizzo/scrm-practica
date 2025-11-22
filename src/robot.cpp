@@ -174,7 +174,6 @@ geometry_msgs::Twist Robot::runPotentialFields(const sensor_msgs::LaserScan& las
 	tf::Vector3 vObj = generateObjectiveVector();
 	tf::Vector3 vObs = generateObstacleVectors(laserData);
 
-
 	tf::Vector3 result = params.w1 * vObj + params.w2 * vObs;
 
 	double angleToTarget = std::atan2(result.y(), result.x());
@@ -225,7 +224,11 @@ tf::Vector3 Robot::generateObstacleVectors(const sensor_msgs::LaserScan& laserDa
 	for (size_t i = 0; i < laserData.ranges.size(); i++) {
 		double reading = laserData.ranges[i];
 
-		tf::Vector3 vector = generateObstacleVector(i, angleIncrement, reading);
+		if (reading > laserData.range_max) continue;
+		if (reading < 0) continue;
+		if (reading >= params.criticalDistance) continue;
+
+		tf::Vector3 vector = generateObstacleVector(i, angleIncrement,laserData.angle_min, reading);
 		vectors.push_back(vector);
 	}
 
@@ -234,25 +237,26 @@ tf::Vector3 Robot::generateObstacleVectors(const sensor_msgs::LaserScan& laserDa
 		result += vec;
 	}
 
-	return result;
+	return transformToOdomFrame(result);
 }
 
-tf::Vector3 Robot::generateObstacleVector(size_t i, double angleIncrement, double reading) {
-	double theta = -M_PI + (i * angleIncrement);
-
-	double x = reading * std::sin(theta);
-	double y = reading * std::cos(theta);
-
-	double magnitude = std::sqrt(std::pow(x, 2) + std::pow(y, 2));
-
-	double newMagnitude = 0;
-	if (reading <= params.criticalDistance) { 
-		newMagnitude = (params.criticalDistance - reading) / params.criticalDistance;
+tf::Vector3 Robot::generateObstacleVector(size_t i, double angleIncrement, double angleMin, double reading) {
+	if (reading > params.criticalDistance) {
+		return tf::Vector3(0, 0, 0);
 	}
 
+	double theta = angleMin + (i * angleIncrement);
+
+	double newMagnitude = (params.criticalDistance - reading) / params.criticalDistance;
+
+	double x;
+	double y;
 	if (newMagnitude > 0) {
-		x = (x / magnitude) * newMagnitude;
-		y = (y / magnitude) * newMagnitude;
+		double ux = std::cos(theta);
+		double uy = std::sin(theta);
+
+		x = -ux * newMagnitude;
+		y = -uy * newMagnitude;
 	} else {
 		x = 0;
 		y = 0;
@@ -261,8 +265,7 @@ tf::Vector3 Robot::generateObstacleVector(size_t i, double angleIncrement, doubl
 
 	tf::Vector3 robotVector(x, y, 0);
 
-	// Return the vector transformed and inverted
-	return transformToOdomFrame(robotVector) * -1;
+	return robotVector;
 }
 
 tf::Vector3 Robot::transformToOdomFrame(tf::Vector3 robotVector) {
