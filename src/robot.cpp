@@ -68,12 +68,10 @@ bool Robot::reachedObjective() {
 	double distance = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2));
 
 	if (role == Follower && distance <= params.distLeader) {
-		ROS_INFO("id: %d (Follower), I've reached objective", id);
 		return true;
 	}
 
 	if (role == Leader && distance <= params.distanceToObjective) {
-		ROS_INFO("id: %d (Leader), I've reached objective", id);
 		return true;
 	}
 
@@ -185,16 +183,20 @@ geometry_msgs::Twist Robot::runPotentialFields(const sensor_msgs::LaserScan& las
 		std::pow(result.x(), 2) +  std::pow(result.y(), 2)
 	);
 
-
 	double rotationVelocity = computeRotation(angleToTarget);
 	cmd_vel.angular.z = rotationVelocity;
 
+	// Compute an speed factor so if the robot has a big
+	// angle difference between its current orientation and the
+	// result vector orientation it slows down its linear velocity
+	double angleError = std::atan2(result.y(), result.x()) - currentOdom.currentOrientation;
+	angleError = std::fmod(angleError + M_PI, 2.0 * M_PI) - M_PI;
 
-	if (std::abs(angleToTarget) < params.permittedOrientationError) {
-		cmd_vel.linear.x = std::min(magnitude, params.vMaximumDisplacement);
-	} else {
-		cmd_vel.linear.x = 0;
-	}
+	double speedFactor = std::cos(angleError);
+	speedFactor = std::max(0.0, speedFactor);
+
+	double linearVelocity = std::min(magnitude, params.vMaximumDisplacement) * speedFactor;
+	cmd_vel.linear.x = linearVelocity;
 
 	lastPotentialFieldsDecision = cmd_vel;
 	currentState = ExecutingPotentialFieldsDecision;
@@ -220,8 +222,9 @@ tf::Vector3 Robot::generateObjectiveVector() {
 tf::Vector3 Robot::generateObstacleVectors(const sensor_msgs::LaserScan& laserData) {
 	std::vector<tf::Vector3> vectors;
 	double angleIncrement = laserData.angle_increment;
+	size_t middle = laserData.ranges.size() / 2;
 
-	for (size_t i = 0; i < laserData.ranges.size(); i++) {
+	for (size_t i = middle - ANGLE_STEPS_OFFSET; i < middle + ANGLE_STEPS_OFFSET; i++) {
 		double reading = laserData.ranges[i];
 
 		if (reading > laserData.range_max) continue;
@@ -237,7 +240,9 @@ tf::Vector3 Robot::generateObstacleVectors(const sensor_msgs::LaserScan& laserDa
 		result += vec;
 	}
 
-	return transformToOdomFrame(result);
+	result = transformToOdomFrame(result);
+
+	return result;
 }
 
 tf::Vector3 Robot::generateObstacleVector(size_t i, double angleIncrement, double angleMin, double reading) {
