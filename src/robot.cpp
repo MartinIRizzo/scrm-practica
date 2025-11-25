@@ -46,8 +46,6 @@ double Robot::computeAngleDifference() {
 	// Calculate the shortest rotation angle
 	angleDifference = std::fmod(angleDifference + M_PI, 2.0 * M_PI) - M_PI;
 
-	//ROS_INFO("angleDiff=%lf, oriError=%lf", angleDifference, oriError);
-
 	return angleDifference;
 }
 
@@ -142,6 +140,8 @@ geometry_msgs::Twist Robot::runSimpleAvoidance(const sensor_msgs::LaserScan& las
 
 		return cmd_vel;
 	}
+
+	return cmd_vel;
 }
 
 geometry_msgs::Twist Robot::runPotentialFields(const sensor_msgs::LaserScan& laserData) {
