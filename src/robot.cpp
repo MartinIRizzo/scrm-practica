@@ -53,7 +53,7 @@ double Robot::computeAngleDifference() {
 
 double Robot::computeRotation(double angleDifference) {
 	double rotVel = 0;
-	if (angleDifference < params.permittedOrientationError) {
+	if (std::abs(angleDifference) < params.permittedOrientationError) {
 		rotVel = params.kMinimumRotation * params.vMaximumRotation * angleDifference;
 	} else {
 		rotVel = params.kMaximumRotation * params.vMaximumRotation * angleDifference;
@@ -198,7 +198,7 @@ geometry_msgs::Twist Robot::runPotentialFields(const sensor_msgs::LaserScan& las
 
 	lastPotentialFieldsDecision = cmd_vel;
 	currentState = ExecutingPotentialFieldsDecision;
-	lastAvoidTimestamp = ros::Time::now().toSec();
+	lastPotentialFieldsDecisionTimestamp = ros::Time::now().toSec();
 
 	return cmd_vel;
 }
