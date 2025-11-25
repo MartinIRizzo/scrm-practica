@@ -25,6 +25,8 @@ geometry_msgs::Twist Robot::run(const sensor_msgs::LaserScan& laserData) {
 }
 
 bool Robot::isObjectAhead(const sensor_msgs::LaserScan& laserData) {
+	// Use a vision cone to the left and right of the middle
+	// of the laserscan
 	int middle = laserData.ranges.size() / 2;
 
 	for (size_t i = middle - ANGLE_STEPS_OFFSET; i <= middle + ANGLE_STEPS_OFFSET; i++) {
@@ -98,7 +100,6 @@ geometry_msgs::Twist Robot::runSimpleAvoidance(const sensor_msgs::LaserScan& las
 		double dy = targetY - currentOdom.currentY;
 		double distance = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2));
 
-		// Reached objective
 		if (reachedObjective()) {
 			return cmd_vel;
 		}
@@ -131,8 +132,6 @@ geometry_msgs::Twist Robot::runSimpleAvoidance(const sensor_msgs::LaserScan& las
 	if (currentState == AvoidingObstacle) {
 		cmd_vel.linear.x = params.vMaximumDisplacement;
 		double timeAvoiding = ros::Time::now().toSec() - lastAvoidTimestamp;
-
-		// ROS_INFO("tAvoidObs=%lf",tAvoidObs);
 
 		if (timeAvoiding >= params.timeToAvoidObstacle) {
 			currentState = Normal;
@@ -211,8 +210,13 @@ tf::Vector3 Robot::generateObjectiveVector() {
 
 	double magnitude = std::sqrt(std::pow(x, 2) + std::pow(y, 2));
 
-	x /= magnitude;
-	y /= magnitude;
+	if (magnitude > 1e-6) {
+		x /= magnitude;
+		y /= magnitude;
+	} else {
+		x = 0;
+		y = 0;
+	}
 
 	tf::Vector3 vector(x, y, 0);
 
@@ -222,8 +226,10 @@ tf::Vector3 Robot::generateObjectiveVector() {
 tf::Vector3 Robot::generateObstacleVectors(const sensor_msgs::LaserScan& laserData) {
 	std::vector<tf::Vector3> vectors;
 	double angleIncrement = laserData.angle_increment;
-	size_t middle = laserData.ranges.size() / 2;
 
+	// Use a vision cone to the left and right of the middle
+	// of the laserscan
+	size_t middle = laserData.ranges.size() / 2;
 	for (size_t i = middle - ANGLE_STEPS_OFFSET; i < middle + ANGLE_STEPS_OFFSET; i++) {
 		double reading = laserData.ranges[i];
 
