@@ -130,6 +130,11 @@ geometry_msgs::Twist Robot::runSimpleAvoidance(const sensor_msgs::LaserScan& las
 	} 
 	
 	if (currentState == AvoidingObstacle) {
+		if (objectAhead) {
+			currentState = RotatingToAvoidObstacle;
+			return cmd_vel;
+		}
+
 		cmd_vel.linear.x = params.vMaximumDisplacement;
 		double timeAvoiding = ros::Time::now().toSec() - lastAvoidTimestamp;
 
